@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Navigation 🧭</title>
+
+  <!-- iOS Home Screen PWA -->
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Navigation">
+
+  <!-- Icon for home screen (inline SVG as data URI) -->
+
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAgMTIwIj48cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgcng9IjI2IiBmaWxsPSIjMGQwZDBmIi8+PHRleHQgeD0iNjAiIHk9Ijc4IiBmb250LXNpemU9IjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn6eBPC90ZXh0Pjwvc3ZnPg==">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:      #0d0d0f;
+      --surface: #18181b;
+      --border:  rgba(255,255,255,0.08);
+      --text:    #f4f4f5;
+      --muted:   #71717a;
+      --accent:  #6366f1;
+      --green:   #22c55e;
+      --red:     #ef4444;
+      --orange:  #f97316;
+      --safe-top: env(safe-area-inset-top, 44px);
+      --safe-bot: env(safe-area-inset-bottom, 20px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      overscroll-behavior: none;
+    }
+
+    input { color-scheme: dark; font-family: inherit; }
+    ::placeholder { color: var(--muted); }
+    a { text-decoration: none; }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+    /* ── Layout ── */
+    #app { min-height: 100vh; padding-bottom: calc(60px + var(--safe-bot)); }
+
+    /* ── Header ── */
+    #header {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(13,13,15,0.92);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--border);
+      padding: calc(var(--safe-top) + 12px) 16px 14px;
+    }
+    #header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; display: flex; align-items: baseline; gap: 8px; }
+    #header p  { font-size: 13px; color: var(--muted); margin: 2px 0 14px; }
+
+    /* ── Search ── */
+    .search-row { display: flex; gap: 8px; }
+    .search-box {
+      flex: 1; display: flex; align-items: center; gap: 10;
+      background: var(--surface); border-radius: 13px; padding: 0 14px;
+      border: 1px solid var(--border);
+    }
+    .search-box svg { flex-shrink: 0; }
+    .search-box input {
+      flex: 1; border: none; outline: none; font-size: 15px;
+      color: var(--text); background: transparent; padding: 12px 0;
+      min-width: 0;
+    }
+    .search-box input + button {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 17px; padding: 0; line-height: 1;
+    }
+    #go-btn {
+      background: var(--accent); color: #fff; border: none;
+      border-radius: 13px; padding: 0 22px; font-size: 14px;
+      font-weight: 700; cursor: pointer; font-family: inherit;
+      letter-spacing: 0.2px; transition: opacity .15s, transform .1s;
+      white-space: nowrap;
+    }
+    #go-btn:active { transform: scale(0.95); opacity: 0.85; }
+    #go-btn.loading { opacity: 0.65; cursor: default; }
+
+    /* ── Main content ── */
+    #content { padding: 16px 16px 0; }
+
+    /* ── Section header ── */
+    .section-head {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    .section-head span.label {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.8px;
+    }
+    .section-head span.hint {
+      font-size: 11px; color: var(--muted); margin-left: auto;
+    }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block; padding: 2px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface); border-radius: 14px;
+      border: 1px solid var(--border); padding: 14px 16px;
+      margin-bottom: 10px; transition: border-color .2s;
+    }
+    .card:hover { border-color: rgba(255,255,255,0.15); }
+
+    /* ── Nav buttons ── */
+    .nav-btns { display: flex; gap: 8px; margin-top: 12px; }
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      gap: 5px; padding: 11px 4px; border-radius: 12px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.2px;
+      transition: opacity .15s, transform .1s; border: 1px solid transparent;
+    }
+    .nav-btn:active { opacity: 0.7; transform: scale(0.95); }
+    .nav-btn .icon { font-size: 19px; }
+
+    /* ── Error ── */
+    .error-card {
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5; font-size: 13px;
+      display: flex; gap: 8px; align-items: flex-start;
+    }
+
+    /* ── Result card ── */
+    .result-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .result-name { font-weight: 700; font-size: 15px; line-height: 1.3; }
+    .result-sub  { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .result-gps  { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: monospace; }
+
+    /* ── Save row ── */
+    .save-row { display: flex; gap: 8px; margin-top: 12px; }
+    .save-row input {
+      flex: 1; padding: 8px 12px; border-radius: 10px;
+      border: 1px solid rgba(99,102,241,0.4); font-size: 14px;
+      outline: none; background: #1e1e24; color: var(--text);
+    }
+
+    /* ── Fav card ── */
+    .fav-row { display: flex; align-items: center; gap: 8px; }
+    .fav-info { flex: 1; cursor: pointer; padding: 2px 0; border-radius: 10px; transition: background .15s; }
+    .fav-info:active { background: rgba(255,255,255,0.04); }
+    .fav-name { font-weight: 600; font-size: 14px; }
+    .fav-gps  { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: monospace; }
+    .drag-handle {
+      display: flex; flex-direction: column; gap: 3px;
+      padding: 4px 4px; cursor: grab; flex-shrink: 0;
+    }
+    .drag-handle:active { cursor: grabbing; }
+    .drag-handle div { width: 16px; height: 2px; border-radius: 2px; background: rgba(113,113,122,0.6); }
+    .icon-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 16px; padding: 4px 3px; line-height: 1;
+    }
+    .edit-row { display: flex; gap: 8px; }
+    .edit-row input {
+      flex: 1; padding: 7px 12px; border-radius: 10px;
+      border: 1.5px solid rgba(99,102,241,0.4); font-size: 14px;
+      outline: none; background: #1e1e24; color: var(--text);
+    }
+
+    /* ── Drag states ── */
+    .card.dragging  { opacity: 0.35; transform: scale(0.97); }
+    .card.drag-over { border-color: rgba(99,102,241,0.6) !important; background: rgba(99,102,241,0.07) !important; }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    /* ── Footer ── */
+    #footer {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(13,13,15,0.92);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      padding: 10px 16px calc(10px + var(--safe-bot));
+      text-align: center; font-size: 11.5px; color: var(--muted);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeUp 0.22s ease forwards; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+  </style>
+
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <h1>Navigation <span>🧭</span></h1>
+    <p>Ouvre dans ton app préférée</p>
+    <div class="search-row">
+      <div class="search-box">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2.5" style="margin-right:10px">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input id="search-input" type="search" placeholder="IKEA Dijon, 47.33 5.07…" autocomplete="off" autocorrect="off">
+        <button id="clear-btn" style="display:none" onclick="clearSearch()">✕</button>
+      </div>
+      <button id="go-btn" onclick="doSearch()">Go</button>
+    </div>
+  </div>
+
+  <div id="content">
+    <div id="error-zone"></div>
+    <div id="results-zone"></div>
+    <div id="divider" class="divider" style="display:none"></div>
+    <div id="favs-zone"></div>
+  </div>
+
+  <div id="footer">
+    📱 Utilise <strong style="color:#6366f1">Safari</strong> sur iPhone pour ouvrir les apps
+  </div>
+</div>
+
+<script>
+// ── Constants ────────────────────────────────────────────────────────────────
+const GPS_RE = /^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/;
+
+const DEFAULT_FAVS = [
+  { id:"fav1", name:"48 rue de Dijon",          lat:47.336343, lon:5.024672 },
+  { id:"fav2", name:"15 rue Ernest Champeaux",  lat:47.302580, lon:5.061643 },
+  { id:"fav3", name:"32 rue des Granges",       lat:46.185415, lon:5.570450 },
+  { id:"fav4", name:"Parking UFR STAPS",        lat:47.311300, lon:5.076300 },
+  { id:"fav5", name:"Centre entraînement DFCO", lat:47.339419, lon:5.111857 },
+];
+
+// ── State ────────────────────────────────────────────────────────────────────
+let favorites = [];
+let dragIdx = null;
+let openFavId = null;
+
+function loadFavs() {
+  try { const s = localStorage.getItem("nav_favs"); if (s) return JSON.parse(s); } catch {}
+  return DEFAULT_FAVS.map(f => ({...f}));
+}
+function saveFavs() {
+  try { localStorage.setItem("nav_favs", JSON.stringify(favorites)); } catch {}
+}
+
+// ── Geocode ──────────────────────────────────────────────────────────────────
+async function geocode(query) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1024,
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      tool_choice: { type: "auto" },
+      system: `Tu es un géocodeur qui utilise la recherche web pour trouver des coordonnées GPS précises.
+Retourne UNIQUEMENT un tableau JSON (sans markdown) avec 1-5 résultats : [{display_name, lat, lon}] (lat/lon en string).
+Si introuvable : [].`,
+      messages: [{ role:"user", content:`Coordonnées GPS précises de : "${query}"` }]
+    })
+  });
+
+  if (!res.ok) throw new Error(`Erreur API ${res.status}`);
+  const data = await res.json();
+
+  const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+  const m = text.match(/\[[\s\S]*?\]/);
+  if (m) return JSON.parse(m[0]);
+
+  // Follow-up if tool_use blocks need results
+  const toolUse = (data.content||[]).filter(b=>b.type==="tool_use");
+  if (toolUse.length) {
+    const msgs = [
+      { role:"user", content:`Coordonnées GPS précises de : "${query}"` },
+      { role:"assistant", content: data.content },
+      { role:"user", content: toolUse.map(tu=>({ type:"tool_result", tool_use_id:tu.id, content:"OK" })) }
+    ];
+    const res2 = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:500,
+        tools:[{type:"web_search_20250305",name:"web_search"}],
+        system:"Retourne UNIQUEMENT un tableau JSON valide : [{display_name,lat,lon}]. Sans markdown.",
+        messages: msgs
+      })
+    });
+    if (res2.ok) {
+      const d2 = await res2.json();
+      const t2 = (d2.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+      const m2 = t2.match(/\[[\s\S]*?\]/);
+      if (m2) return JSON.parse(m2[0]);
+    }
+  }
+  return [];
+}
+
+// ── Nav buttons HTML ─────────────────────────────────────────────────────────
+function navButtonsHTML(name, lat, lon) {
+  const enc = encodeURIComponent(name);
+  const btns = [
+    { label:"Amap",        icon:"🌍", color:"#f97316", url:`iosamap://navi?sourceApplication=app&poiname=${enc}&lat=${lat}&lon=${lon}&dev=1&style=0` },
+    { label:"Google Maps", icon:"📍", color:"#22c55e", url:`comgooglemaps://?daddr=${lat},${lon}&directionsmode=driving` },
+    { label:"Apple Plans", icon:"🍎", color:"#6366f1", url:`maps://?daddr=${lat},${lon}&dirflg=d` },
+  ];
+  return `<div class="nav-btns">${btns.map(b=>`
+    <a class="nav-btn" href="${b.url}"
+       style="background:${b.color}1a;border-color:${b.color}33;color:${b.color}">
+      <span class="icon">${b.icon}</span><span>${b.label}</span>
+    </a>`).join("")}</div>`;
+}
+
+// ── Search ───────────────────────────────────────────────────────────────────
+const input = document.getElementById("search-input");
+const goBtn = document.getElementById("go-btn");
+const clearBtn = document.getElementById("clear-btn");
+
+input.addEventListener("input", () => { clearBtn.style.display = input.value ? "" : "none"; });
+input.addEventListener("keydown", e => { if (e.key==="Enter") doSearch(); });
+
+function clearSearch() {
+  input.value = "";
+  clearBtn.style.display = "none";
+  document.getElementById("results-zone").innerHTML = "";
+  document.getElementById("error-zone").innerHTML = "";
+  document.getElementById("divider").style.display = "none";
+}
+
+async function doSearch() {
+  const q = input.value.trim();
+  if (!q) return;
+  document.getElementById("error-zone").innerHTML = "";
+  document.getElementById("results-zone").innerHTML = "";
+
+  // GPS direct
+  const gps = q.match(GPS_RE);
+  if (gps) {
+    renderResults([{ display_name:`GPS : ${q}`, lat:gps[1], lon:gps[2] }]);
+    return;
+  }
+
+  goBtn.innerHTML = '<span class="spin">⟳</span>';
+  goBtn.classList.add("loading");
+  try {
+    const places = await geocode(q);
+    if (!places.length) showError(`Aucun résultat pour « ${q} »`);
+    else renderResults(places);
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    goBtn.innerHTML = "Go";
+    goBtn.classList.remove("loading");
+  }
+}
+
+function showError(msg) {
+  document.getElementById("error-zone").innerHTML =
+    `<div class="card error-card fade-in"><span>⚠️</span><span style="word-break:break-word">${msg}</span></div>`;
+}
+
+// ── Results ──────────────────────────────────────────────────────────────────
+function renderResults(places) {
+  const zone = document.getElementById("results-zone");
+  const badge = `<span class="badge" style="background:rgba(99,102,241,.13);border:1px solid rgba(99,102,241,.25);color:#6366f1">${places.length}</span>`;
+  let html = `<div class="section-head fade-in"><span class="label">Résultats</span>${badge}</div>`;
+  places.forEach((p, i) => {
+    const lat = parseFloat(p.lat), lon = parseFloat(p.lon);
+    const parts = (p.display_name||"Lieu").split(",");
+    const name = parts[0].trim();
+    const sub  = parts.slice(1,3).join(",").trim();
+    html += `<div class="card fade-in" style="animation-delay:${i*0.05}s" id="res-${i}">
+      <div class="result-row">
+        <div style="flex:1;min-width:0">
+          <div class="result-name">${name}</div>
+          ${sub ? `<div class="result-sub">${sub}</div>` : ""}
+          <div class="result-gps">${lat.toFixed(5)}, ${lon.toFixed(5)}</div>
+        </div>
+        <button onclick="toggleSave(${i},'${escJ(name)}',${lat},${lon})"
+          id="save-btn-${i}"
+          style="background:rgba(99,102,241,.15);color:#6366f1;border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;flex-shrink:0">
+          ★ Sauver
+        </button>
+      </div>
+      <div id="save-row-${i}" style="display:none" class="save-row">
+        <input id="save-name-${i}" value="${escJ(name)}" placeholder="Nom du favori…">
+        <button onclick="confirmSave(${i},${lat},${lon})"
+          style="background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer">✓</button>
+      </div>
+      ${navButtonsHTML(name, lat, lon)}
+    </div>`;
+  });
+  zone.innerHTML = html;
+  document.getElementById("divider").style.display = "";
+}
+
+let savingIdx = null;
+function toggleSave(i, name, lat, lon) {
+  const row = document.getElementById(`save-row-${i}`);
+  const btn = document.getElementById(`save-btn-${i}`);
+  const open = row.style.display === "none";
+  row.style.display = open ? "" : "none";
+  btn.textContent = open ? "✕ Annuler" : "★ Sauver";
+  btn.style.background = open ? "rgba(239,68,68,.15)" : "rgba(99,102,241,.15)";
+  btn.style.color = open ? "#ef4444" : "#6366f1";
+  btn.style.borderColor = open ? "rgba(239,68,68,.3)" : "rgba(99,102,241,.3)";
+  if (open) { const inp = document.getElementById(`save-name-${i}`); inp.value = name; inp.focus(); }
+}
+
+function confirmSave(i, lat, lon) {
+  const name = document.getElementById(`save-name-${i}`).value.trim() || "Favori";
+  favorites.push({ id:`f${Date.now()}`, name, lat, lon });
+  saveFavs();
+  renderFavs();
+  // Reset save UI
+  document.getElementById(`save-row-${i}`).style.display = "none";
+  const btn = document.getElementById(`save-btn-${i}`);
+  btn.textContent = "✓ Sauvé !";
+  btn.style.background = "rgba(34,197,94,.15)";
+  btn.style.color = "#22c55e";
+  btn.style.borderColor = "rgba(34,197,94,.3)";
+}
+
+// ── Escape helper ─────────────────────────────────────────────────────────────
+function escJ(s) { return (s||"").replace(/'/g,"\\'").replace(/"/g,"&quot;"); }
+function escH(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+// ── Favorites ────────────────────────────────────────────────────────────────
+function renderFavs() {
+  const zone = document.getElementById("favs-zone");
+  const badge = `<span class="badge" style="background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.25);color:#f59e0b">${favorites.length}</span>`;
+  let html = `<div class="section-head"><span class="label">Favoris</span>${badge}<span class="hint">≡ glisser pour trier</span></div>`;
+
+  favorites.forEach((fav, idx) => {
+    html += `<div class="card" id="fc-${fav.id}"
+      draggable="true"
+      ondragstart="onDragStart(${idx})"
+      ondragover="event.preventDefault();onDragOver(${idx})"
+      ondrop="event.preventDefault();onDrop(${idx})"
+      ondragend="onDragEnd()">
+      <div class="fav-row" id="frow-${fav.id}">
+        <div class="drag-handle" title="Glisser pour trier">
+          <div></div><div></div><div></div>
+        </div>
+        <div class="fav-info" onclick="toggleFav('${fav.id}')">
+          <div class="fav-name">${escH(fav.name)}</div>
+          <div class="fav-gps">${fav.lat.toFixed(5)}, ${fav.lon.toFixed(5)}</div>
+        </div>
+        <button class="icon-btn" onclick="startEdit('${fav.id}')" title="Renommer">✏️</button>
+        <button class="icon-btn" onclick="deleteFav('${fav.id}')" title="Supprimer">🗑️</button>
+      </div>
+      <div id="edit-${fav.id}" style="display:none" class="edit-row">
+        <input id="einput-${fav.id}" value="${escH(fav.name)}"
+          onkeydown="if(event.key==='Enter')confirmEdit('${fav.id}')">
+        <button onclick="confirmEdit('${fav.id}')"
+          style="background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer">✓</button>
+        <button onclick="cancelEdit('${fav.id}')"
+          style="background:rgba(255,255,255,.06);color:var(--muted);border:none;border-radius:8px;padding:7px 10px;cursor:pointer">✕</button>
+      </div>
+      <div id="fnav-${fav.id}" style="display:none">
+        ${navButtonsHTML(fav.name, fav.lat, fav.lon)}
+      </div>
+    </div>`;
+  });
+  zone.innerHTML = html;
+}
+
+function toggleFav(id) {
+  const el = document.getElementById(`fnav-${id}`);
+  if (!el) return;
+  const isOpen = el.style.display !== "none";
+  // Close previously open
+  if (openFavId && openFavId !== id) {
+    const prev = document.getElementById(`fnav-${openFavId}`);
+    if (prev) prev.style.display = "none";
+  }
+  el.style.display = isOpen ? "none" : "";
+  openFavId = isOpen ? null : id;
+}
+
+function deleteFav(id) {
+  favorites = favorites.filter(f => f.id !== id);
+  saveFavs(); renderFavs();
+}
+
+function startEdit(id) {
+  document.getElementById(`frow-${id}`).style.display = "none";
+  document.getElementById(`fnav-${id}`).style.display = "none";
+  document.getElementById(`edit-${id}`).style.display = "";
+  setTimeout(() => document.getElementById(`einput-${id}`).focus(), 50);
+}
+function cancelEdit(id) {
+  document.getElementById(`frow-${id}`).style.display = "";
+  document.getElementById(`edit-${id}`).style.display = "none";
+}
+function confirmEdit(id) {
+  const val = document.getElementById(`einput-${id}`).value.trim();
+  if (val) favorites = favorites.map(f => f.id===id ? {...f, name:val} : f);
+  saveFavs(); renderFavs();
+}
+
+// ── Drag & drop ──────────────────────────────────────────────────────────────
+function onDragStart(idx) {
+  dragIdx = idx;
+  setTimeout(() => {
+    const el = document.getElementById(`fc-${favorites[idx]?.id}`);
+    if (el) el.classList.add("dragging");
+  }, 0);
+}
+function onDragOver(idx) {
+  document.querySelectorAll(".card.drag-over").forEach(el => el.classList.remove("drag-over"));
+  if (idx !== dragIdx) {
+    const el = document.getElementById(`fc-${favorites[idx]?.id}`);
+    if (el) el.classList.add("drag-over");
+  }
+}
+function onDrop(targetIdx) {
+  if (dragIdx === null || dragIdx === targetIdx) return;
+  const updated = [...favorites];
+  const [moved] = updated.splice(dragIdx, 1);
+  updated.splice(targetIdx, 0, moved);
+  favorites = updated;
+  dragIdx = null;
+  saveFavs(); renderFavs();
+}
+function onDragEnd() {
+  document.querySelectorAll(".card.dragging, .card.drag-over").forEach(el => {
+    el.classList.remove("dragging", "drag-over");
+  });
+  dragIdx = null;
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+favorites = loadFavs();
+renderFavs();
+</script>
+
+</body>
+</html>
