@@ -244,7 +244,6 @@ const DEFAULT_FAVS = [
 
 // ── State ────────────────────────────────────────────────────────────────────
 let favorites = [];
-let dragIdx = null;
 let openFavId = null;
 
 function loadFavs() {
@@ -255,56 +254,20 @@ function saveFavs() {
   try { localStorage.setItem("nav_favs", JSON.stringify(favorites)); } catch {}
 }
 
-// ── Geocode ──────────────────────────────────────────────────────────────────
+// ── Geocode via Nominatim (OpenStreetMap) ────────────────────────────────────
 async function geocode(query) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      tool_choice: { type: "auto" },
-      system: `Tu es un géocodeur qui utilise la recherche web pour trouver des coordonnées GPS précises.
-Retourne UNIQUEMENT un tableau JSON (sans markdown) avec 1-5 résultats : [{display_name, lat, lon}] (lat/lon en string).
-Si introuvable : [].`,
-      messages: [{ role:"user", content:`Coordonnées GPS précises de : "${query}"` }]
-    })
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=fr&addressdetails=1`;
+  const res = await fetch(url, {
+    headers: { "Accept-Language": "fr", "User-Agent": "NavigationApp/1.0" },
+    signal: AbortSignal.timeout(8000)
   });
-
-  if (!res.ok) throw new Error(`Erreur API ${res.status}`);
+  if (!res.ok) throw new Error(`Erreur réseau ${res.status}`);
   const data = await res.json();
-
-  const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
-  const m = text.match(/\[[\s\S]*?\]/);
-  if (m) return JSON.parse(m[0]);
-
-  // Follow-up if tool_use blocks need results
-  const toolUse = (data.content||[]).filter(b=>b.type==="tool_use");
-  if (toolUse.length) {
-    const msgs = [
-      { role:"user", content:`Coordonnées GPS précises de : "${query}"` },
-      { role:"assistant", content: data.content },
-      { role:"user", content: toolUse.map(tu=>({ type:"tool_result", tool_use_id:tu.id, content:"OK" })) }
-    ];
-    const res2 = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:500,
-        tools:[{type:"web_search_20250305",name:"web_search"}],
-        system:"Retourne UNIQUEMENT un tableau JSON valide : [{display_name,lat,lon}]. Sans markdown.",
-        messages: msgs
-      })
-    });
-    if (res2.ok) {
-      const d2 = await res2.json();
-      const t2 = (d2.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
-      const m2 = t2.match(/\[[\s\S]*?\]/);
-      if (m2) return JSON.parse(m2[0]);
-    }
-  }
-  return [];
+  return data.map(p => ({
+    display_name: p.display_name,
+    lat: p.lat,
+    lon: p.lon
+  }));
 }
 
 // ── Nav buttons HTML ─────────────────────────────────────────────────────────
@@ -440,18 +403,14 @@ function escH(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").rep
 function renderFavs() {
   const zone = document.getElementById("favs-zone");
   const badge = `<span class="badge" style="background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.25);color:#f59e0b">${favorites.length}</span>`;
-  let html = `<div class="section-head"><span class="label">Favoris</span>${badge}<span class="hint">≡ glisser pour trier</span></div>`;
+  let html = `<div class="section-head"><span class="label">Favoris</span>${badge}<span class="hint">▲▼ pour trier</span></div>`;
 
   favorites.forEach((fav, idx) => {
-    html += `<div class="card" id="fc-${fav.id}"
-      draggable="true"
-      ondragstart="onDragStart(${idx})"
-      ondragover="event.preventDefault();onDragOver(${idx})"
-      ondrop="event.preventDefault();onDrop(${idx})"
-      ondragend="onDragEnd()">
+    html += `<div class="card" id="fc-${fav.id}">
       <div class="fav-row" id="frow-${fav.id}">
-        <div class="drag-handle" title="Glisser pour trier">
-          <div></div><div></div><div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+          <button class="sort-btn" onclick="moveFav(${idx},-1)" ${idx===0?'disabled':''} title="Monter">▲</button>
+          <button class="sort-btn" onclick="moveFav(${idx},1)" ${idx===favorites.length-1?'disabled':''} title="Descendre">▼</button>
         </div>
         <div class="fav-info" onclick="toggleFav('${fav.id}')">
           <div class="fav-name">${escH(fav.name)}</div>
@@ -510,35 +469,15 @@ function confirmEdit(id) {
   saveFavs(); renderFavs();
 }
 
-// ── Drag & drop ──────────────────────────────────────────────────────────────
-function onDragStart(idx) {
-  dragIdx = idx;
-  setTimeout(() => {
-    const el = document.getElementById(`fc-${favorites[idx]?.id}`);
-    if (el) el.classList.add("dragging");
-  }, 0);
-}
-function onDragOver(idx) {
-  document.querySelectorAll(".card.drag-over").forEach(el => el.classList.remove("drag-over"));
-  if (idx !== dragIdx) {
-    const el = document.getElementById(`fc-${favorites[idx]?.id}`);
-    if (el) el.classList.add("drag-over");
-  }
-}
-function onDrop(targetIdx) {
-  if (dragIdx === null || dragIdx === targetIdx) return;
+// ── Sort favorites ───────────────────────────────────────────────────────────
+function moveFav(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= favorites.length) return;
   const updated = [...favorites];
-  const [moved] = updated.splice(dragIdx, 1);
-  updated.splice(targetIdx, 0, moved);
+  const [moved] = updated.splice(idx, 1);
+  updated.splice(newIdx, 0, moved);
   favorites = updated;
-  dragIdx = null;
   saveFavs(); renderFavs();
-}
-function onDragEnd() {
-  document.querySelectorAll(".card.dragging, .card.drag-over").forEach(el => {
-    el.classList.remove("dragging", "drag-over");
-  });
-  dragIdx = null;
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
