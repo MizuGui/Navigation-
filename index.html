@@ -1,19 +1,22 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Navigation 🧭</title>
 
-  <!-- iOS Home Screen PWA -->
+  <!-- Dark everywhere -->
+  <meta name="theme-color" content="#0d0d0f">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
 
+  <!-- iOS Home Screen PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Navigation">
 
   <!-- Icon for home screen (inline SVG as data URI) -->
-
   <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAgMTIwIj48cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgcng9IjI2IiBmaWxsPSIjMGQwZDBmIi8+PHRleHQgeD0iNjAiIHk9Ijc4IiBmb250LXNpemU9IjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn6eBPC90ZXh0Pjwvc3ZnPg==">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,31 +37,84 @@
       --safe-bot: env(safe-area-inset-bottom, 20px);
     }
 
+    /* Native UI (keyboard, scrollbars, form controls, selection) goes dark */
+    :root { color-scheme: dark; }
+
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-    html, body {
+    html {
+      background: var(--bg);
+      /* Paints the overscroll / rubber-band area behind the page */
+      background-color: var(--bg);
+      min-height: 100%;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
       background: var(--bg);
       color: var(--text);
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
-      overscroll-behavior: none;
+      min-height: 100dvh;
+      overscroll-behavior-y: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
-    input { color-scheme: dark; font-family: inherit; }
-    ::placeholder { color: var(--muted); }
+    /* Solid dark layer behind the notch + home indicator, above everything's z-index floor */
+    body::before {
+      content: ""; position: fixed; top: 0; left: 0; right: 0;
+      height: var(--safe-top); background: var(--bg); z-index: 30; pointer-events: none;
+    }
+    body::after {
+      content: ""; position: fixed; bottom: 0; left: 0; right: 0;
+      height: var(--safe-bot); background: var(--bg); z-index: 30; pointer-events: none;
+    }
+
+    input, button, select, textarea { color-scheme: dark; font-family: inherit; }
+    ::placeholder { color: var(--muted); opacity: 1; }
     a { text-decoration: none; }
 
+    /* Text selection + autofill stay dark */
+    ::selection { background: rgba(99,102,241,0.35); color: var(--text); }
+    input:-webkit-autofill,
+    input:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--text);
+      -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+      caret-color: var(--text);
+    }
+
+    /* Kill Safari's light native search decorations */
+    input[type="search"] { -webkit-appearance: none; appearance: none; }
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; display: none; }
+
     ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
 
     /* ── Layout ── */
-    #app { min-height: 100vh; padding-bottom: calc(60px + var(--safe-bot)); }
+    /* Fixed dark backdrop — guarantees darkness even where html/body bg won't paint */
+    #backdrop {
+      position: fixed; inset: 0; background: var(--bg);
+      z-index: -1; pointer-events: none;
+    }
+    #app {
+      position: relative;
+      background: var(--bg);
+      min-height: 100vh; min-height: 100dvh;
+      padding-bottom: calc(60px + var(--safe-bot));
+    }
+    #content { background: var(--bg); }
 
     /* ── Header ── */
     #header {
       position: sticky; top: 0; z-index: 20;
-      background: rgba(13,13,15,0.92);
-      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      background-color: var(--bg);
+      background: rgba(13,13,15,0.96);
+      backdrop-filter: blur(24px) saturate(140%); -webkit-backdrop-filter: blur(24px) saturate(140%);
       border-bottom: 1px solid var(--border);
       padding: calc(var(--safe-top) + 12px) 16px 14px;
     }
@@ -121,16 +177,68 @@
     }
     .card:hover { border-color: rgba(255,255,255,0.15); }
 
-    /* ── Nav buttons ── */
-    .nav-btns { display: flex; gap: 8px; margin-top: 12px; }
+    /* ── Nav buttons (2x2 grid) ── */
+    .nav-btns {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-top: 12px;
+    }
     .nav-btn {
-      flex: 1; display: flex; flex-direction: column; align-items: center;
-      gap: 5px; padding: 11px 4px; border-radius: 12px;
-      font-size: 11px; font-weight: 700; letter-spacing: 0.2px;
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 12px 8px; border-radius: 12px;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.2px;
       transition: opacity .15s, transform .1s; border: 1px solid transparent;
     }
     .nav-btn:active { opacity: 0.7; transform: scale(0.95); }
-    .nav-btn .icon { font-size: 19px; }
+    .nav-btn .icon { font-size: 17px; }
+
+    /* ── Recent searches ── */
+    .recent-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .chip {
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--muted); font-size: 12px; padding: 6px 12px;
+      border-radius: 20px; cursor: pointer; font-family: inherit;
+      transition: background .15s, color .15s; display: flex; align-items: center; gap: 6px;
+    }
+    .chip:active { background: rgba(99,102,241,0.15); color: var(--accent); }
+    .chip .x { opacity: 0.5; font-size: 13px; }
+
+    /* ── Sort buttons ── */
+    .sort-btn {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 7px; width: 28px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0; padding: 0;
+      transition: background .15s, border-color .15s, transform .1s;
+    }
+    .sort-btn svg { display: block; stroke: #a1a1aa; fill: none; }
+    .sort-btn:active { background: rgba(99,102,241,0.3); border-color: rgba(99,102,241,0.5); transform: scale(0.92); }
+    .sort-btn:active svg { stroke: #818cf8; }
+    .sort-btn:disabled { opacity: 0.25; cursor: default; }
+    .sort-btn:disabled svg { stroke: #52525b; }
+
+    /* ── Toolbar ── */
+    .toolbar { display: flex; gap: 8px; margin-top: 12px; }
+    .tool-btn {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      color: var(--muted); font-size: 12px; font-weight: 600;
+      padding: 10px 8px; border-radius: 11px; cursor: pointer;
+      font-family: inherit; display: flex; align-items: center;
+      justify-content: center; gap: 6px; transition: background .15s, color .15s;
+    }
+    .tool-btn:active { background: rgba(99,102,241,0.15); color: var(--accent); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: calc(70px + var(--safe-bot)); left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(35,35,42,0.96); backdrop-filter: blur(12px);
+      color: var(--text); font-size: 13px; font-weight: 600;
+      padding: 11px 20px; border-radius: 24px; z-index: 100;
+      border: 1px solid var(--border); opacity: 0; pointer-events: none;
+      transition: opacity .25s, transform .25s; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     /* ── Error ── */
     .error-card {
@@ -186,8 +294,8 @@
     /* ── Footer ── */
     #footer {
       position: fixed; bottom: 0; left: 0; right: 0;
-      background: rgba(13,13,15,0.92);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      background: rgba(13,13,15,0.96);
+      backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
       border-top: 1px solid var(--border);
       padding: 10px 16px calc(10px + var(--safe-bot));
       text-align: center; font-size: 11.5px; color: var(--muted);
@@ -199,9 +307,9 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .spin { display: inline-block; animation: spin 1s linear infinite; }
   </style>
-
 </head>
 <body>
+<div id="backdrop"></div>
 <div id="app">
   <div id="header">
     <h1>Navigation <span>🧭</span></h1>
@@ -216,9 +324,16 @@
       </div>
       <button id="go-btn" onclick="doSearch()">Go</button>
     </div>
+    <div class="toolbar">
+      <button class="tool-btn" onclick="useMyLocation()" id="loc-btn">📍 Ma position</button>
+      <button class="tool-btn" onclick="exportFavs()">💾 Exporter</button>
+      <button class="tool-btn" onclick="document.getElementById('import-file').click()">📥 Importer</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importFavs(event)">
+    </div>
   </div>
 
   <div id="content">
+    <div id="recent-zone"></div>
     <div id="error-zone"></div>
     <div id="results-zone"></div>
     <div id="divider" class="divider" style="display:none"></div>
@@ -228,11 +343,15 @@
   <div id="footer">
     📱 Utilise <strong style="color:#6366f1">Safari</strong> sur iPhone pour ouvrir les apps
   </div>
+  <div id="toast"></div>
 </div>
 
 <script>
 // ── Constants ────────────────────────────────────────────────────────────────
 const GPS_RE = /^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/;
+
+const CHEV_UP   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>';
+const CHEV_DOWN = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 
 const DEFAULT_FAVS = [
   { id:"fav1", name:"48 rue de Dijon",          lat:47.336343, lon:5.024672 },
@@ -275,6 +394,7 @@ function navButtonsHTML(name, lat, lon) {
   const enc = encodeURIComponent(name);
   const btns = [
     { label:"Amap",        icon:"🌍", color:"#f97316", url:`iosamap://navi?sourceApplication=app&poiname=${enc}&lat=${lat}&lon=${lon}&dev=1&style=0` },
+    { label:"Waze",        icon:"🚗", color:"#38bdf8", url:`waze://?ll=${lat},${lon}&navigate=yes` },
     { label:"Google Maps", icon:"📍", color:"#22c55e", url:`comgooglemaps://?daddr=${lat},${lon}&directionsmode=driving` },
     { label:"Apple Plans", icon:"🍎", color:"#6366f1", url:`maps://?daddr=${lat},${lon}&dirflg=d` },
   ];
@@ -319,7 +439,7 @@ async function doSearch() {
   try {
     const places = await geocode(q);
     if (!places.length) showError(`Aucun résultat pour « ${q} »`);
-    else renderResults(places);
+    else { renderResults(places); addRecent(q); }
   } catch(e) {
     showError(e.message);
   } finally {
@@ -348,7 +468,7 @@ function renderResults(places) {
         <div style="flex:1;min-width:0">
           <div class="result-name">${name}</div>
           ${sub ? `<div class="result-sub">${sub}</div>` : ""}
-          <div class="result-gps">${lat.toFixed(5)}, ${lon.toFixed(5)}</div>
+          <div class="result-gps" onclick="copyGPS(${lat},${lon})" style="cursor:pointer" title="Copier">${lat.toFixed(5)}, ${lon.toFixed(5)} 📋</div>
         </div>
         <button onclick="toggleSave(${i},'${escJ(name)}',${lat},${lon})"
           id="save-btn-${i}"
@@ -403,14 +523,14 @@ function escH(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").rep
 function renderFavs() {
   const zone = document.getElementById("favs-zone");
   const badge = `<span class="badge" style="background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.25);color:#f59e0b">${favorites.length}</span>`;
-  let html = `<div class="section-head"><span class="label">Favoris</span>${badge}<span class="hint">▲▼ pour trier</span></div>`;
+  let html = `<div class="section-head"><span class="label">Favoris</span>${badge}<span class="hint">Trier avec les flèches</span></div>`;
 
   favorites.forEach((fav, idx) => {
     html += `<div class="card" id="fc-${fav.id}">
       <div class="fav-row" id="frow-${fav.id}">
         <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-          <button class="sort-btn" onclick="moveFav(${idx},-1)" ${idx===0?'disabled':''} title="Monter">▲</button>
-          <button class="sort-btn" onclick="moveFav(${idx},1)" ${idx===favorites.length-1?'disabled':''} title="Descendre">▼</button>
+          <button class="sort-btn" onclick="moveFav(${idx},-1)" ${idx===0?'disabled':''} aria-label="Monter">${CHEV_UP}</button>
+          <button class="sort-btn" onclick="moveFav(${idx},1)" ${idx===favorites.length-1?'disabled':''} aria-label="Descendre">${CHEV_DOWN}</button>
         </div>
         <div class="fav-info" onclick="toggleFav('${fav.id}')">
           <div class="fav-name">${escH(fav.name)}</div>
@@ -480,10 +600,129 @@ function moveFav(idx, dir) {
   saveFavs(); renderFavs();
 }
 
+// ── Toast ────────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+// ── Recent searches ──────────────────────────────────────────────────────────
+function loadRecents() {
+  try { const s = localStorage.getItem("nav_recents"); if (s) return JSON.parse(s); } catch {}
+  return [];
+}
+function saveRecents(r) {
+  try { localStorage.setItem("nav_recents", JSON.stringify(r)); } catch {}
+}
+function addRecent(q) {
+  let r = loadRecents().filter(x => x.toLowerCase() !== q.toLowerCase());
+  r.unshift(q);
+  r = r.slice(0, 6);
+  saveRecents(r);
+  renderRecents();
+}
+function removeRecent(q) {
+  saveRecents(loadRecents().filter(x => x !== q));
+  renderRecents();
+}
+function renderRecents() {
+  const r = loadRecents();
+  const zone = document.getElementById("recent-zone");
+  if (!r.length) { zone.innerHTML = ""; return; }
+  zone.innerHTML = `<div class="recent-chips">${r.map(q => `
+    <button class="chip" onclick="rerun('${escJ(q)}')">
+      <span>🕐 ${escH(q)}</span>
+      <span class="x" onclick="event.stopPropagation();removeRecent('${escJ(q)}')">✕</span>
+    </button>`).join("")}</div>`;
+}
+function rerun(q) {
+  input.value = q;
+  clearBtn.style.display = "";
+  doSearch();
+}
+
+// ── My location ──────────────────────────────────────────────────────────────
+function useMyLocation() {
+  const btn = document.getElementById("loc-btn");
+  if (!navigator.geolocation) { toast("Géolocalisation non disponible"); return; }
+  btn.innerHTML = '<span class="spin">⟳</span> Localisation…';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      btn.innerHTML = "📍 Ma position";
+      renderResults([{ display_name: "Ma position actuelle", lat: String(lat), lon: String(lon) }]);
+      toast("Position trouvée ✓");
+    },
+    err => {
+      btn.innerHTML = "📍 Ma position";
+      toast(err.code === 1 ? "Accès refusé — autorise la localisation" : "Position introuvable");
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+  );
+}
+
+// ── Export / Import favorites ────────────────────────────────────────────────
+function exportFavs() {
+  const data = JSON.stringify(favorites, null, 2);
+  const blob = new Blob([data], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `favoris-navigation-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`${favorites.length} favoris exportés ✓`);
+}
+
+function importFavs(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error("Format invalide");
+      const valid = imported.filter(f => f.name && typeof f.lat === "number" && typeof f.lon === "number");
+      if (!valid.length) throw new Error("Aucun favori valide");
+      // Merge: keep existing, add new ones (dedupe by name+coords)
+      const existing = new Set(favorites.map(f => `${f.name}|${f.lat}|${f.lon}`));
+      const toAdd = valid
+        .filter(f => !existing.has(`${f.name}|${f.lat}|${f.lon}`))
+        .map(f => ({ id: `f${Date.now()}${Math.random().toString(36).slice(2,6)}`, name: f.name, lat: f.lat, lon: f.lon }));
+      favorites = [...favorites, ...toAdd];
+      saveFavs(); renderFavs();
+      toast(toAdd.length ? `${toAdd.length} favoris importés ✓` : "Aucun nouveau favori");
+    } catch (err) {
+      toast("Erreur : " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = "";
+}
+
+// ── Copy coordinates ─────────────────────────────────────────────────────────
+function copyGPS(lat, lon) {
+  const txt = `${lat}, ${lon}`;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(() => toast("Coordonnées copiées ✓"));
+  } else {
+    const ta = document.createElement("textarea");
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); document.body.removeChild(ta);
+    toast("Coordonnées copiées ✓");
+  }
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 favorites = loadFavs();
 renderFavs();
+renderRecents();
 </script>
-
 </body>
 </html>
